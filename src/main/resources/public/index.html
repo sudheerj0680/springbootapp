@@ -1,0 +1,361 @@
+<!doctype html>
+<html ng-app="orderbookmanagement">
+<head>
+    <title>Order book system</title>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+        <script src="orderbook.js"></script>
+        <h2 align="center"><span class="label label-warning">Order book system</span></h2>
+    </head>
+<body>
+<div ng-controller="OrderbookController" class="container">
+    <div style="text-align:right;font-weight: bold">Hello there,</div>
+    <hr>
+    <div id="msgs" class="alert alert-info alert-dismissible" role="alert" style="display:none">
+        <button type="button" id="closeAlertBtn" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <div id="msg"> </div>
+    </div>
+    <p>
+        <select title="Instruments" class="btn btn-default dropdown-toggle" ng-model="instrumentModel"
+                ng-options="instrument.name for instrument in instruments"
+                ng-change="enableOpenOrderBtn()">
+            <option value="">-- Instruments --</option>
+        </select>
+        &nbsp;&nbsp;<button id= "openBookBtn" class="btn btn-primary" ng-click="openOrderBook(instrumentModel)" ng-disabled="true">
+            Open Order Book</button>
+        <br>
+
+    <table class="table table-striped" ng-if="orderbooks.length > 0">
+        <th>Id#</th>
+        <th>Instrument Id</th>
+        <th>Instrument</th>
+        <th>Status</th>
+        <th>Orders</th>
+        <th>Executions</th>
+        <th colspan="4">Operations</th>
+        <tr ng-repeat="x in orderbooks">
+            <td>{{ x.id }}</td>
+            <td>{{ x.instrumentId }}</td>
+            <td>{{ x.instrument }}</td>
+            <td>{{ x.status }}</td>
+            <td><button class="btn btn-link" ng-click="showOrders(x.orders)"  style="padding: initial;">Orders</button></td>
+            <td><button class="btn btn-link" ng-click="showExecutions(x.executions)" style="padding: initial;">Executions</button></td>
+            <td><button class= "btn btn-sm" ng-click="openAddOrderModal(x)" ng-disabled="checkStatus('OPEN',x) ">Add order</button></td>
+            <td><button class= "btn btn-sm" ng-click="closeOrderBook(x)" ng-disabled="checkStatus('OPEN',x)">Close</button></td>
+            <td><button class= "btn btn-sm" ng-click="openExecuteModal(x) "ng-disabled="checkStatus('CLOSED,PARTIAL_EXECUTED',x)">Execute</button></td>
+            <td><button class= "dot-btn" ng-click="showOrderBookStats(x)" title="More details"/></td>
+        </tr>
+    </table>
+    <hr>
+    <div id="orderModal" class="modal fade" role="dialog"> <!--start add order div-->
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Add Order</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" id="addOrderForm" name="orderForm">
+                        <div class="form-group">
+                            <input class="form-control" id="instrumentIdInput" type="hidden" >
+                            <input class="form-control" id="orderBookIdInput" type="hidden" >
+                        </div>
+                        <div class="form-group">
+                            <label for="instrumentInput" class="col-sm-2 control-label">Instrument</label>
+                            <div class="col-sm-10">
+                                <input class="form-control" id="instrumentInput" type="text" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">Quantity</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" id="quantityInput" type="number" ng-model ="quantity" required>
+                        </div>
+                        </div>
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">Price</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" id="priceInput" type="number" ng-Model ="price" required>
+                        </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Entry Date</label>
+                            <div class="col-sm-10">
+                                <input class="form-control" type="text" id="entryDatepicker" ng-model="entryDate" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                        <label class="col-sm-2 control-label">Order Type</label>
+                        <div class="col-sm-10">
+                            <select id="selectOrderType" class="form-control">
+                                <option value="MARKET">Market</option>
+                                <option value="LIMIT">Limit</option>
+                            </select>
+                        </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" ng-click="addOrder()" ng-disabled="orderForm.$invalid">Add Order</button>
+                    <button type="button" class="btn btn-primary" ng-click="resetAddOrderModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div> <!--end add order div-->
+
+    <div id="executeModal" class="modal fade" role="dialog"> <!--start add order div-->
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Add Execution</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" id="addExecutionForm" name="executeForm">
+                        <div class="form-group">
+                            <input class="form-control" id="execOrderBookIdInput" type="hidden" >
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Execution Quantity</label>
+                            <div class="col-sm-10">
+                                <input class="form-control" id="executionQuantityInput" type="number" ng-model ="executionQuantity" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Execution Price</label>
+                            <div class="col-sm-10">
+                                <input class="form-control" id="executionPriceInput" type="number" ng-Model ="executionPrice" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" ng-click="executeOrderBook()" ng-disabled="executeForm.$invalid">Execute</button>
+                    <button type="button" class="btn btn-primary" ng-click="resetExecuteModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div> <!--end add order div-->
+
+    <div id="showOrdersModal" class="modal fade" role="dialog"> <!--start show orders div-->
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Orders</h4>
+                </div>
+                <div class="modal-body">
+                    <div ng-if="orders.length == 0"><b>No orders added!</b></div>
+                    <table class="table table-striped" ng-if="orders.length > 0">
+                        <th>Id#</th>
+<!--                        <th>Instrument</th>-->
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>OrderType</th>
+                        <th>EntryDate</th>
+                        <th>Status</th>
+                        <tr ng-repeat="x in orders">
+                            <td>{{ x.order.id }}</td>
+<!--                            <td>{{ x.order.instrumentId }}</td>-->
+                            <td>{{ x.order.quantity }}</td>
+                            <td>{{ x.order.price }}</td>
+                            <td>{{ x.order.orderType }}</td>
+                            <td>{{ x.order.entryDate }}</td>
+                            <td>{{ x.orderStatus }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div> <!--end show orders div-->
+
+    <div id="showExecutionsModal" class="modal fade" role="dialog"> <!--start show orders div-->
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Executions</h4>
+                </div>
+                <div class="modal-body">
+                    <div ng-if="executions.length == 0"><b>No executions added!</b></div>
+                    <table class="table table-striped" ng-if="executions.length > 0">
+                        <th>Id#</th>
+                        <th>Execution Quantity</th>
+                        <th>Execution Price</th>
+                        <tr ng-repeat="x in executions">
+                            <td>{{ $index + 1 }}</td>
+                            <td>{{ x.quantity }}</td>
+                            <td>{{ x.executionPrice }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div> <!--end show orders div-->
+
+    <div id="showOrderbookStatsModal" class="modal fade" role="dialog"> <!--start show order boot stats div-->
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Order Book Stats</h4>
+                </div>
+                <div class="modal-body">
+                    <table class="my-out-table">
+                        <tr>
+                            <td>
+                                <table class="my-table">
+                                    <tr>
+                                        <td>Instrument</td>
+                                        <td>-</td>
+                                        <td><div>{{orderBookStats.instrument}}</div></td>
+                                    </tr>
+                                </table>
+                            </td>
+                            <td>
+                                <table class="my-table">
+                                    <tr>
+                                        <td>Status</td>
+                                        <td>-</td>
+                                        <td><div>{{orderBookStats.status}}</div></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <table class="my-table">
+                                    <tr>
+                                        <td>Book Demand</td>
+                                        <td>-</td>
+                                        <td><div>{{orderBookStats.bookDemand}}</div></td>
+                                    </tr>
+                                </table>
+                            </td>
+                            <td>
+                                <table class="my-table">
+                                    <tr>
+                                        <td>Accumulated Execution Quantity</td>
+                                        <td>-</td>
+                                        <td><div>{{orderBookStats.accumulatedExecQuantity}}</div></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <table class="my-table">
+                                    <tr>
+                                        <td>Execution Price (Latest)</td>
+                                        <td>-</td>
+                                        <td><div>{{orderBookStats.executionPrice}}</div></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <table class="my-out-table">
+                                    <th colspan="4">Order</th>
+                                    <tr>
+                                        <td><table class="my-table">
+                                            <tr>
+                                                <td>Smallest</td>
+                                            </tr>
+                                            <tr>
+                                                <td><div>&nbsp;&nbsp;{{orderBookStats.smallestOrder}}</div></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Largest</td>
+                                            </tr>
+                                            <tr>
+                                                <td><div>&nbsp;&nbsp;{{orderBookStats.biggestOrder}}</div></td>
+                                            </tr>
+                                        </table></td>
+
+
+                                        <td><table class="my-table">
+                                            <tr>
+                                                <td>Valid</td>
+                                            </tr>
+                                            <tr>
+                                                <td><div>&nbsp;&nbsp;{{orderBookStats.validOrders}}</div></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Invalid</td>
+                                            </tr>
+                                            <tr>
+                                                <td><div>&nbsp;&nbsp;{{orderBookStats.invalidOrders}}</div></td>
+                                            </tr>
+                                        </table></td>
+
+                                        <td><table class="my-table">
+                                            <tr>
+                                                <td>First entry date</td>
+                                            </tr>
+                                            <tr>
+                                                <td><div>&nbsp;&nbsp;{{orderBookStats.firstOrderEntryDate}}</div></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Last entry Date</td>
+                                            </tr>
+                                            <tr>
+                                                <td><div>&nbsp;&nbsp;{{orderBookStats.lastOrderEntryDate}}</div></td>
+                                            </tr>
+                                        </table></td>
+                                        <td></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <table class="my-out-table">
+                                    <th colspan="4">Limit Orders</th>
+                                    <tr>
+                                        <td>
+                                            <div class="scrollit" style="overflow:auto;height:100px;">
+                                                <table class="table-responsive my-table">
+                                                    <th style="text-align:center;  color: black;font-size:12px;" >Id#</th>
+                                                    <th style="text-align:center;  color: black;font-size:12px;" >Quantity</th>
+                                                    <th style="text-align:center;  color: black;font-size:12px;" >Price</th>
+                                                    <tr ng-repeat="x in orderBookStats.limitBreakDown">
+                                                        <td><div style="text-align:center;">{{ $index + 1 }}</div></td>
+                                                        <td><div style="text-align:center;">{{x.limitQuantity}}</div></td>
+                                                        <td><div style="text-align:center;">{{x.limitPrice}}</div></td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div> <!--end show order boot stats div-->
+
+</div>
+</body>
+
+</html>

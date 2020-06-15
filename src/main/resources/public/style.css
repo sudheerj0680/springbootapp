@@ -1,0 +1,45 @@
+.dot-btn:after {
+  content: '\2807';
+  font-size: 1.4em;
+  color: #2e2e2e
+}
+
+
+.dot-btn, .dot-btn[active], .dot-btn[disabled] {
+    background-color: transparent;
+    box-shadow: none;
+    border-color: transparent;
+}
+
+.my-out-table {
+  border: 2px solid orange;
+  border-radius: 7px;
+  border-collapse: separate;
+  border-spacing: .5em;
+  width:100%;
+}
+
+.my-out-table th {
+  text-align: center;
+  color: #489de6;
+}
+
+.my-table {
+    border-collapse: separate;
+    background:#fdeed1;
+    border-radius:7px;
+    -moz-border-radius:7px;
+    width:100%;
+}
+
+.my-table td {
+  padding: .35rem;
+  vertical-align: top;
+  font-size:12px;
+  width:33%;
+}
+
+.my-table td div {
+  font-size:11px;
+  font-weight: bold;
+}
